@@ -249,10 +249,6 @@ def skipgram(currentWord, C, contextWords, tokens, inputVectors, outputVectors,
     # iterate through each target context word and find the cost and gradient
     # the cost and gradient of prediction is the sum of cost and gradient
     # for all context words
-    # [TODO] iterate through through contextWords so that we're not duplicating
-    # gradient attributed to the context
-    # this might mean we need to generate the gradient output by only
-    # multiplying by the y_diff values of the target 
     for word in contextWords:
         # target: find the location of each context words
         # from the token dictionary
