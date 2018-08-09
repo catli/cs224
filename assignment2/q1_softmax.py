@@ -24,8 +24,14 @@ def softmax(x):
     """
 
     ### YOUR CODE HERE
+    # subtract the max value and then apply exponent
+    print(x)
+    norm_exp_x = lambda x: tf.exp(x - tf.reduce_max(x))
+    exp_x = tf.map_fn(norm_exp_x, x)
+    # normalize each row by dividing by sum
+    norm_by_sum = lambda x: x/tf.reduce_sum(x)
+    out = tf.map_fn(norm_by_sum,  exp_x)
     ### END YOUR CODE
-
     return out
 
 
@@ -54,6 +60,8 @@ def cross_entropy_loss(y, yhat):
     """
 
     ### YOUR CODE HERE
+    # sum up the log likelihood for the one-hot vector of each prediction
+    out = - tf.reduce_sum( tf.to_float(y)*tf.log(yhat))
     ### END YOUR CODE
 
     return out
@@ -75,6 +83,20 @@ def test_softmax_basic():
     with tf.Session() as sess:
             test2 = sess.run(test2)
     test_all_close("Softmax test 2", test2, np.array([[0.73105858, 0.26894142]]))
+
+    # [CL] added some more tests for exhaustive
+    test3 = softmax(tf.constant(np.array([[23,-2, 30], \
+                                    [3,4,2], \
+                                    [-10,-2,-8], \
+                                    [1,20,-4]]), dtype=tf.float32))
+    with tf.Session() as sess:
+            test3 = sess.run(test3)
+    test_all_close("Softmax test 3",
+        test3, np.array([[0.000911051, 1.26526E-14, 0.999088949],
+                [0.244728471, 0.665240956, 0.090030573],
+                [3.3452123e-04, 0.99719369, 2.4717962e-03],
+                [5.6028E-09, 0.999999994 , 3.77513E-11]]))
+
 
     print "Basic (non-exhaustive) softmax tests pass\n"
 

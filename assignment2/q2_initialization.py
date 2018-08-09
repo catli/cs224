@@ -25,6 +25,12 @@ def xavier_weight_init():
             out: tf.Tensor of specified shape sampled from the Xavier distribution.
         """
         ### YOUR CODE HERE
+        # define the range to sample from to avoid uniformity in the output
+        # the smaller the matrix, the larger the perturbation
+        # [TODO why is the xavier intializer a variable?]
+        epsilon = np.sqrt( 6./ ( np.sum(shape) ) )
+        out = tf.Variable( tf.random_uniform(shape, \
+            minval= -epsilon, maxval = epsilon), **kwargs)
         ### END YOUR CODE
         return out
     # Returns defined initializer function.

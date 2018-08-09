@@ -1,3 +1,4 @@
+import pdb
 import cPickle
 import os
 import time
@@ -54,6 +55,12 @@ class ParserModel(Model):
         (Don't change the variable names)
         """
         ### YOUR CODE HERE
+        self.input_placeholder = tf.placeholder(tf.int32, \
+            shape = [None, self.config.n_features])
+        self.labels_placeholder = tf.placeholder(tf.float32, \
+            shape = [None, self.config.n_classes])
+        self.dropout_placeholder = tf.placeholder(tf.float32, \
+            shape = [])
         ### END YOUR CODE
 
     def create_feed_dict(self, inputs_batch, labels_batch=None, dropout=0):
@@ -79,6 +86,12 @@ class ParserModel(Model):
             feed_dict: The feed dictionary mapping from placeholders to values.
         """
         ### YOUR CODE HERE
+        feed_dict = {
+            self.input_placeholder: inputs_batch,
+            self.dropout_placeholder: dropout
+        }
+        if labels_batch is not None:
+            feed_dict[self.labels_placeholder] = labels_batch
         ### END YOUR CODE
         return feed_dict
 
@@ -100,6 +113,17 @@ class ParserModel(Model):
             embeddings: tf.Tensor of shape (None, n_features*embed_size)
         """
         ### YOUR CODE HERE
+
+        # create a tensor variable with 3 - dimension
+        # shape (None, n_features, embed_size)
+        embed_train = tf.Variable(self.pretrained_embeddings)
+        # for each word, concatenate the embedding
+        embeddings_wide = tf.nn.embedding_lookup( \
+                            params = embed_train, \
+                            ids = self.input_placeholder )
+        # concatenated into a vector with (None, n_features*embed_size)
+        embeddings = tf.reshape(embeddings_wide, [-1, \
+                            self.config.n_features*self.config.embed_size ])
         ### END YOUR CODE
         return embeddings
 
@@ -123,9 +147,39 @@ class ParserModel(Model):
         Returns:
             pred: tf.Tensor of shape (batch_size, n_classes)
         """
-
         x = self.add_embedding()
         ### YOUR CODE HERE
+        # Initialize the input word representation matrix
+        w_init = xavier_weight_init()
+        W = tf.Variable( \
+            w_init( \
+                (self.config.n_features*self.config.embed_size,\
+                self.config.hidden_size))\
+            )
+        # # Initialize the output word representation matrix
+        u_init = xavier_weight_init()
+        U = tf.Variable( \
+            u_init( \
+                (self.config.hidden_size,\
+                self.config.n_classes))\
+            )
+        b1 = tf.Variable( tf.zeros(self.config.hidden_size, ))
+        b2  = tf.Variable( tf.zeros(self.config.n_classes, ))
+
+        # the iput embedding times the W plus the bias
+        z = tf.matmul(x, W) + b1
+        # Relu sets a threshold of 0 for all values
+        h_relu = tf.nn.relu(z)
+        # create the Dropout function
+        # for every output h, initalize a random probability
+        # from 0 to 1, if the output is greater than 1 - dropout (p_drop)
+        # we set to 1/keep_prob, otherwise we set to 0
+        # TODO: why is dropout_placheolder the keep probability?
+        h_drop = tf.nn.dropout(h_relu, keep_prob = self.dropout_placeholder)
+
+        # prediction
+        pred = tf.matmul(h_drop, U) + b2
+
         ### END YOUR CODE
         return pred
 
@@ -143,6 +197,11 @@ class ParserModel(Model):
             loss: A 0-d tensor (scalar)
         """
         ### YOUR CODE HERE
+        loss = tf.reduce_mean( \
+            tf.nn.softmax_cross_entropy_with_logits_v2( \
+                labels = self.labels_placeholder, \
+                logits = pred) \
+            )
         ### END YOUR CODE
         return loss
 
@@ -167,6 +226,9 @@ class ParserModel(Model):
             train_op: The Op for training.
         """
         ### YOUR CODE HERE
+
+        opt = tf.train.AdamOptimizer(learning_rate = self.config.lr)
+        train_op = opt.minimize(loss)
         ### END YOUR CODE
         return train_op
 
@@ -178,11 +240,14 @@ class ParserModel(Model):
 
     def run_epoch(self, sess, parser, train_examples, dev_set):
         n_minibatches = 1 + len(train_examples) / self.config.batch_size
+        # TODO: check why prog is causing bug
+        #     https://www.tensorflow.org/api_docs/python/tf/keras/utils/Progbar
         prog = tf.keras.utils.Progbar(target=n_minibatches)
         for i, (train_x, train_y) in enumerate(minibatches(train_examples, self.config.batch_size)):
             loss = self.train_on_batch(sess, train_x, train_y)
-            prog.update(i + 1, [("train loss", loss)], force=i + 1 == n_minibatches)
+            prog.update(i + 1, [("train loss", loss)]) #, force=i + 1 == n_minibatches)
 
+        # TODO delete after testing
         print "Evaluating on dev set",
         dev_UAS, _ = parser.parse(dev_set)
         print "- dev UAS: {:.2f}".format(dev_UAS * 100.0)

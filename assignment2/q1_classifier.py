@@ -46,6 +46,10 @@ class SoftmaxModel(Model):
             self.labels_placeholder
         """
         ### YOUR CODE HERE
+        self.input_placeholder = tf.placeholder(tf.float32, \
+            shape = [self.config.batch_size, self.config.n_features] )
+        self.labels_placeholder = tf.placeholder(tf.float32, \
+            shape = [self.config.batch_size, self.config.n_classes])
         ### END YOUR CODE
 
     def create_feed_dict(self, inputs_batch, labels_batch=None):
@@ -69,6 +73,9 @@ class SoftmaxModel(Model):
             feed_dict: The feed dictionary mapping from placeholders to values.
         """
         ### YOUR CODE HERE
+        feed_dict = { self.input_placeholder: inputs_batch }
+        if labels_batch is not None:
+            feed_dict[self.labels_placeholder]  = labels_batch
         ### END YOUR CODE
         return feed_dict
 
@@ -90,6 +97,18 @@ class SoftmaxModel(Model):
             pred: A tensor of shape (batch_size, n_classes)
         """
         ### YOUR CODE HERE
+
+        # create the variables
+        # W will have width of n_features, initialized with zeroes
+        W = tf.Variable(tf.zeros([self.config.n_features, self.config.n_classes]))
+        b = tf.Variable(tf.zeros(self.config.n_classes, ))
+        print('****Variables:******')
+        print(W)
+        print(b)
+        z = tf.matmul(self.input_placeholder, W) + b
+        print(z)
+        pred = softmax(z)
+
         ### END YOUR CODE
         return pred
 
@@ -104,6 +123,7 @@ class SoftmaxModel(Model):
             loss: A 0-d tensor (scalar)
         """
         ### YOUR CODE HERE
+        loss = cross_entropy_loss( self.labels_placeholder, pred)
         ### END YOUR CODE
         return loss
 
@@ -127,6 +147,8 @@ class SoftmaxModel(Model):
             train_op: The Op for training.
         """
         ### YOUR CODE HERE
+        # uses learning rate defined in config
+        train_op = tf.train.GradientDescentOptimizer(self.config.lr).minimize(loss) 
         ### END YOUR CODE
         return train_op
 
